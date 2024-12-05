@@ -24,7 +24,7 @@ app.use('/api/auth', authRouter);
 app.use('/api/attendance', attendanceRouter);
 app.use('/api/admin', adminRouter);
 
-// 提供靜態文件
+// 提供前端靜態文件
 if (process.env.NODE_ENV === 'production') {
   app.use(express.static(path.join(__dirname, '../client/dist')));
   

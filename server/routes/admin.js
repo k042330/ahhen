@@ -1,17 +1,25 @@
-// server/routes/admin.js
 const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
 const Record = require('../models/Record');
-const auth = require('../middleware/auth');
-const adminAuth = require('../middleware/adminAuth');
 
-// 檢查是否為管理員的中間件
-router.use(auth);
-router.use(adminAuth);
+// 管理員驗證中間件
+const adminAuth = async (req, res, next) => {
+  try {
+    // 檢查用戶是否為管理員
+    const user = await User.findById(req.user.userId);
+    if (user && user.role === 'admin') {
+      next();
+    } else {
+      res.status(403).json({ message: '需要管理員權限' });
+    }
+  } catch (error) {
+    res.status(500).json({ message: '驗證失敗' });
+  }
+};
 
 // 獲取所有用戶
-router.get('/users', async (req, res) => {
+router.get('/users', adminAuth, async (req, res) => {
   try {
     const users = await User.find({ role: 'employee' }).select('-password');
     res.json(users);
@@ -21,7 +29,7 @@ router.get('/users', async (req, res) => {
 });
 
 // 創建新用戶
-router.post('/users', async (req, res) => {
+router.post('/users', adminAuth, async (req, res) => {
   try {
     const user = new User({
       username: req.body.username,
@@ -37,7 +45,7 @@ router.post('/users', async (req, res) => {
 });
 
 // 獲取特定用戶的打卡記錄
-router.get('/records/:userId', async (req, res) => {
+router.get('/records/:userId', adminAuth, async (req, res) => {
   try {
     const records = await Record.find({ userId: req.params.userId })
       .sort({ timestamp: -1 });
@@ -48,7 +56,7 @@ router.get('/records/:userId', async (req, res) => {
 });
 
 // 管理員手動打卡
-router.post('/clock', async (req, res) => {
+router.post('/clock', adminAuth, async (req, res) => {
   try {
     const record = new Record({
       userId: req.body.userId,

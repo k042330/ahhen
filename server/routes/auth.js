@@ -58,7 +58,7 @@ router.post('/login', async (req, res) => {
       return res.status(400).json({ message: '密碼錯誤' });
     }
 
-    // 
+    // 生成 JWT
     const token = jwt.sign(
       { userId: user._id },
       process.env.JWT_SECRET,
@@ -81,5 +81,34 @@ router.post('/login', async (req, res) => {
   }
 });
 
+// 添加更新角色的路由
+router.post('/update-role', async (req, res) => {
+  try {
+    const { username, adminKey, newRole } = req.body;
+    
+    // 驗證管理員密鑰
+    if (adminKey !== process.env.ADMIN_CREATE_KEY) {
+      return res.status(403).json({ message: '無效的管理員密鑰' });
+    }
+
+    // 查找並更新用戶
+    const user = await User.findOne({ username });
+    if (!user) {
+      return res.status(404).json({ message: '用戶不存在' });
+    }
+
+    user.role = newRole;
+    await user.save();
+
+    res.json({ 
+      message: '角色更新成功',
+      username: user.username,
+      role: user.role
+    });
+  } catch (error) {
+    console.error('更新角色失敗:', error);
+    res.status(500).json({ message: '更新角色失敗' });
+  }
+});
 
 module.exports = router;

@@ -17,7 +17,7 @@ mongoose.connect(process.env.MONGODB_URI)
 // 引入路由
 const authRouter = require('./routes/auth');
 const attendanceRouter = require('./routes/attendance');
-const adminRouter = require('./routes/admin');
+const adminRouter = require('./routes/adminRoutes');
 
 // 使用路由
 app.use('/api/auth', authRouter);

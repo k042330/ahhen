@@ -46,47 +46,41 @@ router.post('/login', async (req, res) => {
   try {
     const { username, password } = req.body;
     
-    // 查找用戶並明確選擇需要的欄位
-    const user = await User.findOne({ username }).select('+password +role');
+    // 明確選擇所有需要的字段
+    const user = await User.findOne({ username })
+      .select('username password name role');
+      
     if (!user) {
       return res.status(400).json({ message: '用戶不存在' });
     }
 
-    // 驗證密碼
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
       return res.status(400).json({ message: '密碼錯誤' });
     }
 
-    // 生成 JWT，包含角色信息
     const token = jwt.sign(
-      { 
-        userId: user._id,
-        role: user.role  // 在 token 中包含角色
-      },
+      { userId: user._id, role: user.role },
       process.env.JWT_SECRET,
       { expiresIn: '24h' }
     );
 
-    // 明確返回所有用戶信息，包括角色
-    res.json({
-      user: {
-        id: user._id,
-        username: user.username,
-        name: user.name,
-        role: user.role  // 明確返回角色
-      },
-      token
-    });
-
-    // 調試日誌
-    console.log('Login response:', {
+    console.log('User data:', {
       id: user._id,
       username: user.username,
       name: user.name,
       role: user.role
     });
 
+    res.json({
+      user: {
+        id: user._id,
+        username: user.username,
+        name: user.name,
+        role: user.role
+      },
+      token
+    });
   } catch (error) {
     console.error('登入失敗:', error);
     res.status(500).json({ message: '登入失敗' });
@@ -123,7 +117,7 @@ router.get('/verify', async (req, res) => {
   }
 });
 
-// 添加更新角色的路由
+// 更新用戶角色的路由
 router.post('/update-role', async (req, res) => {
   try {
     const { username, adminKey, newRole } = req.body;
@@ -147,6 +141,38 @@ router.post('/update-role', async (req, res) => {
       username: user.username,
       role: user.role
     });
+  } catch (error) {
+    console.error('更新角色失敗:', error);
+    res.status(500).json({ message: '更新角色失敗' });
+  }
+});
+
+// 強制更新用戶角色的路由
+router.post('/force-update-role', async (req, res) => {
+  try {
+    const { username, adminKey, targetRole } = req.body;
+    
+    // 驗證管理員密鑰
+    if (adminKey !== process.env.ADMIN_CREATE_KEY) {
+      return res.status(403).json({ message: '無效的管理員密鑰' });
+    }
+
+    // 直接使用 updateOne 來更新文檔
+    const result = await User.updateOne(
+      { username },
+      { $set: { role: targetRole } }
+    );
+
+    if (result.matchedCount === 0) {
+      return res.status(404).json({ message: '找不到用戶' });
+    }
+
+    res.json({ 
+      message: '用戶角色更新成功',
+      username,
+      newRole: targetRole
+    });
+
   } catch (error) {
     console.error('更新角色失敗:', error);
     res.status(500).json({ message: '更新角色失敗' });

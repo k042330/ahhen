@@ -6,6 +6,28 @@ function App() {
   const [password, setPassword] = useState('');
   const [records, setRecords] = useState([]);
 
+  // 驗證 token
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      fetch('/api/auth/verify', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.user) {
+          console.log('Verified user:', data.user); // 調試日誌
+          setUser(data.user);
+        }
+      })
+      .catch(() => {
+        localStorage.removeItem('token');
+      });
+    }
+  }, []);
+
   // 獲取打卡記錄
   const fetchRecords = async () => {
     if (!user) return;
@@ -31,7 +53,7 @@ function App() {
     }
   };
 
-  // 登入處理（已修改，添加調試日誌）
+  // 登入處理
   const handleLogin = async (e) => {
     e.preventDefault();
     try {
@@ -43,8 +65,9 @@ function App() {
         body: JSON.stringify({ username, password }),
       });
       const data = await response.json();
+      console.log('Login response:', data); // 調試日誌
+      
       if (response.ok) {
-        console.log('Login response:', data); // 調試日誌
         setUser(data.user);
         localStorage.setItem('token', data.token);
         // 登入成功後獲取記錄
@@ -134,6 +157,10 @@ function App() {
             <div style={{ marginBottom: '20px', textAlign: 'center' }}>
               <h2>歡迎, {user.name}</h2>
               <p>角色: {user.role === 'admin' ? '管理員' : '一般用戶'}</p>
+              {/* 添加調試信息 */}
+              <p style={{ fontSize: '12px', color: '#666' }}>
+                用戶ID: {user.id}, 角色: {user.role}
+              </p>
               <button
                 onClick={handleLogout}
                 style={{

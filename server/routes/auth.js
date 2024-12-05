@@ -46,8 +46,8 @@ router.post('/login', async (req, res) => {
   try {
     const { username, password } = req.body;
     
-    // 查找用戶
-    const user = await User.findOne({ username });
+    // 查找用戶並明確選擇需要的欄位
+    const user = await User.findOne({ username }).select('+password +role');
     if (!user) {
       return res.status(400).json({ message: '用戶不存在' });
     }
@@ -58,26 +58,68 @@ router.post('/login', async (req, res) => {
       return res.status(400).json({ message: '密碼錯誤' });
     }
 
-    // 生成 JWT
+    // 生成 JWT，包含角色信息
     const token = jwt.sign(
-      { userId: user._id },
+      { 
+        userId: user._id,
+        role: user.role  // 在 token 中包含角色
+      },
       process.env.JWT_SECRET,
       { expiresIn: '24h' }
     );
 
-    // 返回用戶信息和 token，確保包含 role
+    // 明確返回所有用戶信息，包括角色
     res.json({
       user: {
         id: user._id,
         username: user.username,
         name: user.name,
-        role: user.role  // 確保返回用戶角色
+        role: user.role  // 明確返回角色
       },
       token
     });
+
+    // 調試日誌
+    console.log('Login response:', {
+      id: user._id,
+      username: user.username,
+      name: user.name,
+      role: user.role
+    });
+
   } catch (error) {
     console.error('登入失敗:', error);
     res.status(500).json({ message: '登入失敗' });
+  }
+});
+
+// 驗證 token 的路由（用於前端驗證）
+router.get('/verify', async (req, res) => {
+  try {
+    const authHeader = req.header('Authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ message: '未提供授權標頭' });
+    }
+
+    const token = authHeader.replace('Bearer ', '');
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    
+    const user = await User.findById(decoded.userId);
+    if (!user) {
+      throw new Error();
+    }
+
+    res.json({
+      user: {
+        id: user._id,
+        username: user.username,
+        name: user.name,
+        role: user.role
+      }
+    });
+  } catch (error) {
+    console.error('Token 驗證失敗:', error);
+    res.status(401).json({ message: '請重新登入' });
   }
 });
 

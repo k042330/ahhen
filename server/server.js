@@ -6,17 +6,24 @@ require('dotenv').config();
 
 const app = express();
 
+// 中間件
 app.use(cors());
 app.use(express.json());
 
 // 連接 MongoDB
-mongoose.connect(process.env.MONGODB_URI);
+mongoose.connect(process.env.MONGODB_URI)
+  .then(() => console.log('Connected to MongoDB'))
+  .catch(err => console.error('Could not connect to MongoDB:', err));
 
-// API 路由
-app.use('/api/auth', require('./routes/auth'));
-app.use('/api/attendance', require('./routes/attendance'));
+// 引入路由
+const authRouter = require('./routes/auth');
+const attendanceRouter = require('./routes/attendance');
 
-// 提供靜態文件
+// 使用路由
+app.use('/api/auth', authRouter);
+app.use('/api/attendance', attendanceRouter);
+
+// 提供前端靜態文件
 if (process.env.NODE_ENV === 'production') {
   app.use(express.static(path.join(__dirname, '../client/dist')));
   

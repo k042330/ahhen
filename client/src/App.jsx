@@ -1,11 +1,37 @@
 import React, { useState, useEffect } from 'react';
 
-const App = () => {
+function App() {
   const [user, setUser] = useState(null);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [records, setRecords] = useState([]);
 
+  // 獲取打卡記錄
+  const fetchRecords = async () => {
+    if (!user) return;
+    
+    try {
+      const token = localStorage.getItem('token');
+      const url = user.role === 'admin' 
+        ? '/api/admin/records' 
+        : '/api/attendance/records';
+        
+      const response = await fetch(url, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setRecords(data);
+      }
+    } catch (error) {
+      console.error('獲取記錄失敗:', error);
+    }
+  };
+
+  // 登入處理
   const handleLogin = async (e) => {
     e.preventDefault();
     try {
@@ -20,12 +46,8 @@ const App = () => {
       if (response.ok) {
         setUser(data.user);
         localStorage.setItem('token', data.token);
-        // 登入成功後立即獲取打卡記錄
-        if (data.user.role === 'admin') {
-          fetchAllRecords();
-        } else {
-          fetchUserRecords();
-        }
+        // 登入成功後獲取記錄
+        fetchRecords();
       } else {
         alert(data.message || '登入失敗');
       }
@@ -34,6 +56,7 @@ const App = () => {
     }
   };
 
+  // 打卡處理
   const handleClock = async (type) => {
     try {
       const token = localStorage.getItem('token');
@@ -45,47 +68,29 @@ const App = () => {
         },
         body: JSON.stringify({ type }),
       });
+      
       if (response.ok) {
-        if (user.role === 'admin') {
-          fetchAllRecords();
-        } else {
-          fetchUserRecords();
-        }
+        alert(type === 'clockIn' ? '上班打卡成功' : '下班打卡成功');
+        fetchRecords(); // 重新獲取記錄
       }
     } catch (error) {
       alert('打卡失敗');
     }
   };
 
-  const fetchUserRecords = async () => {
-    try {
-      const token = localStorage.getItem('token');
-      const response = await fetch('/api/attendance/records', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-      const data = await response.json();
-      setRecords(data);
-    } catch (error) {
-      console.error('獲取記錄失敗:', error);
-    }
+  // 登出處理
+  const handleLogout = () => {
+    setUser(null);
+    setRecords([]);
+    localStorage.removeItem('token');
   };
 
-  const fetchAllRecords = async () => {
-    try {
-      const token = localStorage.getItem('token');
-      const response = await fetch('/api/admin/records', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-      const data = await response.json();
-      setRecords(data);
-    } catch (error) {
-      console.error('獲取記錄失敗:', error);
+  // 當用戶登入後獲取記錄
+  useEffect(() => {
+    if (user) {
+      fetchRecords();
     }
-  };
+  }, [user]);
 
   return (
     <div style={{ maxWidth: '800px', margin: '40px auto', padding: '20px' }}>
@@ -124,8 +129,23 @@ const App = () => {
           </form>
         ) : (
           <div>
-            <div style={{ marginBottom: '20px' }}>
-              <p>歡迎, {user.name} ({user.role === 'admin' ? '管理員' : '員工'})</p>
+            <div style={{ marginBottom: '20px', textAlign: 'center' }}>
+              <h2>歡迎, {user.name}</h2>
+              <p>角色: {user.role === 'admin' ? '管理員' : '一般用戶'}</p>
+              <button
+                onClick={handleLogout}
+                style={{
+                  padding: '5px 10px',
+                  background: '#f44336',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  marginTop: '10px'
+                }}
+              >
+                登出
+              </button>
             </div>
             
             <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', marginBottom: '20px' }}>
@@ -159,29 +179,35 @@ const App = () => {
 
             <div>
               <h3 style={{ marginBottom: '10px' }}>打卡記錄</h3>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                {records.map((record, index) => (
-                  <div 
-                    key={index}
-                    style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      padding: '10px',
-                      background: '#f5f5f5',
-                      borderRadius: '4px'
-                    }}
-                  >
-                    <span>{record.type === 'clockIn' ? '上班' : '下班'}</span>
-                    <span>{new Date(record.timestamp).toLocaleString()}</span>
-                  </div>
-                ))}
-              </div>
+              {records.length > 0 ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  {records.map((record, index) => (
+                    <div 
+                      key={index}
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        padding: '10px',
+                        background: '#f5f5f5',
+                        borderRadius: '4px'
+                      }}
+                    >
+                      <span>{record.type === 'clockIn' ? '上班' : '下班'}</span>
+                      <span>{new Date(record.timestamp).toLocaleString()}</span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p style={{ textAlign: 'center', color: '#666' }}>
+                  暫無打卡記錄
+                </p>
+              )}
             </div>
           </div>
         )}
       </div>
     </div>
   );
-};
+}
 
 export default App;

@@ -31,7 +31,7 @@ function App() {
     }
   };
 
-  // 登入處理
+  // 登入處理（已修改，添加調試日誌）
   const handleLogin = async (e) => {
     e.preventDefault();
     try {
@@ -44,6 +44,7 @@ function App() {
       });
       const data = await response.json();
       if (response.ok) {
+        console.log('Login response:', data); // 調試日誌
         setUser(data.user);
         localStorage.setItem('token', data.token);
         // 登入成功後獲取記錄
@@ -52,6 +53,7 @@ function App() {
         alert(data.message || '登入失敗');
       }
     } catch (error) {
+      console.error('Login error:', error);
       alert('登入失敗');
     }
   };

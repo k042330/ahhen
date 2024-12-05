@@ -58,20 +58,20 @@ router.post('/login', async (req, res) => {
       return res.status(400).json({ message: '密碼錯誤' });
     }
 
-    // 生成 JWT
+    // 
     const token = jwt.sign(
-      { userId: user._id, role: user.role },
+      { userId: user._id },
       process.env.JWT_SECRET,
       { expiresIn: '24h' }
     );
 
-    // 返回用戶信息和 token
+    // 返回用戶信息和 token，確保包含 role
     res.json({
       user: {
         id: user._id,
         username: user.username,
         name: user.name,
-        role: user.role
+        role: user.role  // 確保返回用戶角色
       },
       token
     });
@@ -80,5 +80,6 @@ router.post('/login', async (req, res) => {
     res.status(500).json({ message: '登入失敗' });
   }
 });
+
 
 module.exports = router;

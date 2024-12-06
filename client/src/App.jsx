@@ -29,11 +29,11 @@ function AdminPanel({ token }) {
   // 數據驗證
   const validateNewUser = () => {
     if (newUser.password.length < 6) {
-      setError({ ...error, creating: '密碼長度至少需要6個字符' });
+      setError(prev => ({ ...prev, creating: '密碼長度至少需要6個字符' }));
       return false;
     }
     if (newUser.username.length < 3) {
-      setError({ ...error, creating: '用戶名長度至少需要3個字符' });
+      setError(prev => ({ ...prev, creating: '用戶名長度至少需要3個字符' }));
       return false;
     }
     return true;
@@ -44,8 +44,8 @@ function AdminPanel({ token }) {
     e.preventDefault();
     if (!validateNewUser()) return;
 
-    setLoading({ ...loading, creating: true });
-    setError({ ...error, creating: '' });
+    setLoading(prev => ({ ...prev, creating: true }));
+    setError(prev => ({ ...prev, creating: '' }));
 
     try {
       const response = await fetch('/api/admin/users', {
@@ -64,20 +64,20 @@ function AdminPanel({ token }) {
         fetchUsers();
         alert('用戶創建成功');
       } else {
-        setError({ ...error, creating: data.message || '創建用戶失敗' });
+        setError(prev => ({ ...prev, creating: data.message || '創建用戶失敗' }));
       }
-    } catch (error) {
-      setError({ ...error, creating: '網絡錯誤，請稍後重試' });
-      console.error('創建用戶錯誤:', error);
+    } catch (err) {
+      setError(prev => ({ ...prev, creating: '網絡錯誤，請稍後重試' }));
+      console.error('創建用戶錯誤:', err);
     } finally {
-      setLoading({ ...loading, creating: false });
+      setLoading(prev => ({ ...prev, creating: false }));
     }
   };
 
   // 獲取用戶列表
   const fetchUsers = async () => {
-    setLoading({ ...loading, users: true });
-    setError({ ...error, users: '' });
+    setLoading(prev => ({ ...prev, users: true }));
+    setError(prev => ({ ...prev, users: '' }));
     try {
       const response = await fetch('/api/admin/users', {
         headers: {
@@ -88,22 +88,21 @@ function AdminPanel({ token }) {
         const data = await response.json();
         setUserList(data);
       } else {
-        setError({ ...error, users: '獲取用戶列表失敗' });
+        setError(prev => ({ ...prev, users: '獲取用戶列表失敗' }));
         console.error('獲取用戶列表失敗:', response.statusText);
       }
-    } catch (error) {
-      setError({ ...error, users: '獲取用戶列表失敗' });
-      console.error('獲取用戶列表失敗:', error);
+    } catch (err) {
+      setError(prev => ({ ...prev, users: '獲取用戶列表失敗' }));
+      console.error('獲取用戶列表失敗:', err);
     } finally {
-      setLoading({ ...loading, users: false });
+      setLoading(prev => ({ ...prev, users: false }));
     }
   };
 
-  // **修改後的獲取考勤記錄函數**
   // 獲取考勤記錄（管理員）
   const fetchAttendanceRecords = async () => {
-    setLoading({ ...loading, records: true });
-    setError({ ...error, records: '' });
+    setLoading(prev => ({ ...prev, records: true }));
+    setError(prev => ({ ...prev, records: '' }));
     try {
       const queryParams = new URLSearchParams({
         startDate: filters.startDate,
@@ -116,10 +115,10 @@ function AdminPanel({ token }) {
 
       console.log('發送請求到:', `/api/admin/records?${queryParams}`); // 調試日誌
 
-      const response = await fetch(`/api/admin/records?${queryParams}`, {  // 改為 records 而不是 attendance
+      const response = await fetch(`/api/admin/records?${queryParams}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'  // 添加內容類型
+          'Content-Type': 'application/json'
         }
       });
 
@@ -138,24 +137,24 @@ function AdminPanel({ token }) {
           setTotalPages(1);
         }
       } else {
-        setError({ ...error, records: '獲取考勤記錄失敗' });
+        setError(prev => ({ ...prev, records: '獲取考勤記錄失敗' }));
         setRecords([]);
         setTotalPages(1);
       }
-    } catch (error) {
-      console.error('獲取考勤記錄失敗:', error);
-      setError({ ...error, records: '獲取考勤記錄失敗' });
+    } catch (err) {
+      console.error('獲取考勤記錄失敗:', err);
+      setError(prev => ({ ...prev, records: '獲取考勤記錄失敗' }));
       setRecords([]);
       setTotalPages(1);
     } finally {
-      setLoading({ ...loading, records: false });
+      setLoading(prev => ({ ...prev, records: false }));
     }
   };
 
-  // **修改後的匯出考勤記錄為CSV函數**
+  // 匯出考勤記錄為CSV
   const exportToCSV = async () => {
     try {
-      setLoading({ ...loading, records: true });
+      setLoading(prev => ({ ...prev, records: true }));
 
       // 使用當前篩選條件獲取所有記錄
       const queryParams = new URLSearchParams({
@@ -198,11 +197,11 @@ function AdminPanel({ token }) {
       } else {
         throw new Error('導出失敗');
       }
-    } catch (error) {
-      console.error('導出失敗:', error);
+    } catch (err) {
+      console.error('導出失敗:', err);
       alert('導出失敗，請稍後重試');
     } finally {
-      setLoading({ ...loading, records: false });
+      setLoading(prev => ({ ...prev, records: false }));
     }
   };
 
@@ -547,9 +546,9 @@ function App() {
       } else {
         setError(data.message || '登入失敗');
       }
-    } catch (error) {
+    } catch (err) {
       setError('登入失敗');
-      console.error('登入錯誤:', error);
+      console.error('登入錯誤:', err);
     } finally {
       setLoading(false);
     }
@@ -583,7 +582,7 @@ function App() {
           latitude: position.coords.latitude,
           longitude: position.coords.longitude
         };
-      } catch (error) {
+      } catch (err) {
         alert('無法獲取位置，請確保已允許位置權限');
         return;
       }
@@ -605,9 +604,9 @@ function App() {
         const data = await response.json();
         alert(data.message || '打卡失敗');
       }
-    } catch (error) {
+    } catch (err) {
       alert('打卡失敗');
-      console.error('打卡錯誤:', error);
+      console.error('打卡錯誤:', err);
     }
   };
 
@@ -628,7 +627,8 @@ function App() {
 
         // 設置 lastClockType 為最新的打卡類型
         if (recordsData.length > 0) {
-          const latestRecord = recordsData[recordsData.length - 1];
+          // 假設 recordsData 是按時間降序排序，最新的在前
+          const latestRecord = recordsData[0];
           setLastClockType(latestRecord.type);
         } else {
           setLastClockType(null);
@@ -638,8 +638,8 @@ function App() {
         setRecords([]);
         setLastClockType(null);
       }
-    } catch (error) {
-      console.error('獲取記錄失敗:', error);
+    } catch (err) {
+      console.error('獲取記錄失敗:', err);
       setRecords([]);
       setLastClockType(null);
     }
@@ -782,7 +782,7 @@ function App() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   {records.map((record, index) => (
                     <div 
-                      key={index}
+                      key={record._id || index}
                       style={{
                         display: 'flex',
                         justifyContent: 'space-between',

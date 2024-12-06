@@ -99,7 +99,7 @@ function AdminPanel({ token }) {
     }
   };
 
-  // 獲取考勤記錄
+  // 獲取考勤記錄（管理員）
   const fetchAttendanceRecords = async () => {
     setLoading({ ...loading, records: true });
     setError({ ...error, records: '' });
@@ -109,20 +109,22 @@ function AdminPanel({ token }) {
         page: currentPage,
         limit: ITEMS_PER_PAGE
       });
-      const response = await fetch(`/api/admin/attendance?${queryParams}`, {
+      const response = await fetch(`/api/admin/records?${queryParams}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (response.ok) {
         const data = await response.json();
-        setRecords(data.records);
-        setTotalPages(Math.ceil(data.total / ITEMS_PER_PAGE));
+        setRecords(data.records || []);
+        setTotalPages(Math.ceil((data.total || 0) / ITEMS_PER_PAGE));
       } else {
         setError({ ...error, records: '獲取考勤記錄失敗' });
+        setRecords([]);
         console.error('獲取考勤記錄失敗:', response.statusText);
       }
     } catch (error) {
-      setError({ ...error, records: '獲取考勤記錄失敗' });
       console.error('獲取考勤記錄失敗:', error);
+      setError({ ...error, records: '獲取考勤記錄失敗' });
+      setRecords([]);
     } finally {
       setLoading({ ...loading, records: false });
     }
@@ -438,11 +440,15 @@ function App() {
   const [user, setUser] = useState(null);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [records, setRecords] = useState([]);
+  const [records, setRecords] = useState([]); // 確保 records 初始狀態是陣列
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
   // 登入處理
   const handleLogin = async (e) => {
     e.preventDefault();
+    setLoading(true);
+    setError('');
     try {
       const response = await fetch('/api/auth/login', {
         method: 'POST',
@@ -457,11 +463,13 @@ function App() {
         localStorage.setItem('token', data.token);
         fetchRecords(data.token);
       } else {
-        alert(data.message || '登入失敗');
+        setError(data.message || '登入失敗');
       }
     } catch (error) {
-      alert('登入失敗');
+      setError('登入失敗');
       console.error('登入錯誤:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -491,7 +499,7 @@ function App() {
     }
   };
 
-  // 獲取打卡記錄
+  // 獲取打卡記錄（一般用戶）
   const fetchRecords = async (tokenParam = null) => {
     if (!user && !tokenParam) return;
     try {
@@ -503,12 +511,14 @@ function App() {
       });
       if (response.ok) {
         const data = await response.json();
-        setRecords(data);
+        setRecords(Array.isArray(data) ? data : []);
       } else {
         console.error('獲取記錄失敗:', response.statusText);
+        setRecords([]);
       }
     } catch (error) {
       console.error('獲取記錄失敗:', error);
+      setRecords([]);
     }
   };
 
@@ -542,6 +552,11 @@ function App() {
               required
               style={{ padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }}
             />
+            {error && (
+              <div style={{ color: '#c62828', fontSize: '14px' }}>
+                {error}
+              </div>
+            )}
             <button 
               type="submit"
               style={{
@@ -552,8 +567,9 @@ function App() {
                 borderRadius: '4px',
                 cursor: 'pointer'
               }}
+              disabled={loading}
             >
-              登入
+              {loading ? '登入中...' : '登入'}
             </button>
           </form>
         ) : (

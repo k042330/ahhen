@@ -1,52 +1,76 @@
 const express = require('express');
 const router = express.Router();
-const AttendanceRecord = require('../models/AttendanceRecord');
-const jwt = require('jsonwebtoken');
+const Record = require('../models/Record');
+const auth = require('../middleware/auth');
 
-// 驗證用戶中間件
-const verifyToken = async (req, res, next) => {
+// 獲取個人打卡記錄（一般用戶）
+router.get('/records', auth, async (req, res) => {
   try {
-    const token = req.headers.authorization.split(' ')[1];
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.userId = decoded.userId;
-    next();
+    // 只查詢當前用戶的記錄
+    const records = await Record.find({ userId: req.user.userId })
+      .sort({ timestamp: -1 });
+    res.json(records || []);
   } catch (error) {
-    res.status(401).json({ message: '未授權' });
-  }
-};
-
-// 打卡路由
-router.post('/clock', verifyToken, async (req, res) => {
-  try {
-    const { type, location } = req.body;
-    const userId = req.userId;
-
-    // 創建新的打卡記錄
-    const record = new AttendanceRecord({
-      userId,
-      type,
-      location
-    });
-
-    await record.save();
-    res.json({ message: type === 'clockIn' ? '上班打卡成功' : '下班打卡成功' });
-  } catch (error) {
-    console.error('打卡失敗:', error);
-    res.status(500).json({ message: error.message });
+    console.error('獲取記錄失敗:', error);
+    res.status(500).json([]);
   }
 });
 
-// 獲取打卡記錄路由
-router.get('/records', verifyToken, async (req, res) => {
+// 管理員查看所有打卡記錄
+router.get('/admin/records', auth, async (req, res) => {
   try {
-    const records = await AttendanceRecord.find({ userId: req.userId })
-      .sort({ timestamp: -1 }) // 按時間倒序排序
-      .limit(30);  // 限制返回最近30條記錄
-    
-    res.json(records);
+    // 驗證是否為管理員
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ 
+        message: '無權限訪問此資源'
+      });
+    }
+
+    const { page = 1, limit = 10 } = req.query;
+    const skip = (page - 1) * limit;
+
+    const records = await Record.find()
+      .sort({ timestamp: -1 })
+      .skip(skip)
+      .limit(parseInt(limit));
+
+    const total = await Record.countDocuments();
+
+    res.json({
+      records: records || [],
+      total,
+      page: parseInt(page),
+      limit: parseInt(limit)
+    });
   } catch (error) {
     console.error('獲取記錄失敗:', error);
-    res.status(500).json({ message: error.message });
+    res.status(500).json({
+      records: [],
+      total: 0,
+      page: 1,
+      limit: 10
+    });
+  }
+});
+
+// 打卡
+router.post('/clock', auth, async (req, res) => {
+  try {
+    const { type, location } = req.body; // 如果需要 location，可以保留
+    const record = new Record({
+      userId: req.user.userId,
+      type,
+      location, // 如果需要 location，可以保留
+      timestamp: new Date()
+    });
+    await record.save();
+    res.status(201).json({
+      message: type === 'clockIn' ? '上班打卡成功' : '下班打卡成功',
+      record
+    });
+  } catch (error) {
+    console.error('打卡失敗:', error);
+    res.status(500).json({ message: '打卡失敗' });
   }
 });
 

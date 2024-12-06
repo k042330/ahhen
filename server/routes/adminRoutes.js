@@ -1,3 +1,4 @@
+// server/routes/adminRoutes.js
 const router = require('express').Router();
 const User = require('../models/User');
 const Record = require('../models/Record');  // 改為使用 Record 而不是 AttendanceRecord
@@ -112,6 +113,17 @@ router.get('/records', verifyAdmin, async (req, res) => {
   } catch (error) {
     console.error('獲取記錄失敗:', error);
     res.status(500).json({ message: '獲取記錄失敗' });
+  }
+});
+
+// 新增：清空所有打卡記錄
+router.delete('/records/deleteAll', verifyAdmin, async (req, res) => {
+  try {
+    await Record.deleteMany({});  // 清空所有記錄
+    res.json({ message: '所有打卡記錄已清空' });
+  } catch (error) {
+    console.error('清空記錄失敗:', error);
+    res.status(500).json({ message: '清空記錄失敗' });
   }
 });
 

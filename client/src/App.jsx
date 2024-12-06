@@ -555,8 +555,21 @@ function App() {
     }
   };
 
+  // **新增的狀態來追蹤最後一次打卡狀態**
+  const [lastClockType, setLastClockType] = useState(null);
+
   // **修改後的打卡處理，添加位置獲取功能**
   const handleClock = async (type) => {
+    // 檢查是否符合打卡順序
+    if (type === 'clockIn' && lastClockType === 'clockIn') {
+      alert('請先進行下班打卡');
+      return;
+    }
+    if (type === 'clockOut' && lastClockType !== 'clockIn') {
+      alert('請先進行上班打卡');
+      return;
+    }
+
     try {
       const token = localStorage.getItem('token');
       let location = null;
@@ -571,7 +584,8 @@ function App() {
           longitude: position.coords.longitude
         };
       } catch (error) {
-        console.warn('無法獲取位置:', error);
+        alert('無法獲取位置，請確保已允許位置權限');
+        return;
       }
 
       const response = await fetch('/api/attendance/clock', {
@@ -584,6 +598,7 @@ function App() {
       });
       
       if (response.ok) {
+        setLastClockType(type);
         alert(type === 'clockIn' ? '上班打卡成功' : '下班打卡成功');
         fetchRecords(token);
       } else {
@@ -608,14 +623,25 @@ function App() {
       });
       if (response.ok) {
         const data = await response.json();
-        setRecords(Array.isArray(data) ? data : []);
+        const recordsData = Array.isArray(data) ? data : [];
+        setRecords(recordsData);
+
+        // 設置 lastClockType 為最新的打卡類型
+        if (recordsData.length > 0) {
+          const latestRecord = recordsData[recordsData.length - 1];
+          setLastClockType(latestRecord.type);
+        } else {
+          setLastClockType(null);
+        }
       } else {
         console.error('獲取記錄失敗:', response.statusText);
         setRecords([]);
+        setLastClockType(null);
       }
     } catch (error) {
       console.error('獲取記錄失敗:', error);
       setRecords([]);
+      setLastClockType(null);
     }
   };
 
@@ -623,6 +649,7 @@ function App() {
   const handleLogout = () => {
     setUser(null);
     setRecords([]);
+    setLastClockType(null);
     localStorage.removeItem('token');
   };
 
@@ -719,26 +746,29 @@ function App() {
             <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', marginBottom: '20px' }}>
               <button
                 onClick={() => handleClock('clockIn')}
+                disabled={lastClockType === 'clockIn'}
                 style={{
                   padding: '10px 20px',
-                  background: '#4CAF50',
+                  background: lastClockType === 'clockIn' ? '#ccc' : '#4CAF50',
                   color: 'white',
                   border: 'none',
                   borderRadius: '4px',
-                  cursor: 'pointer'
+                  cursor: lastClockType === 'clockIn' ? 'not-allowed' : 'pointer'
                 }}
               >
                 上班打卡
               </button>
+              
               <button
                 onClick={() => handleClock('clockOut')}
+                disabled={lastClockType !== 'clockIn'}
                 style={{
                   padding: '10px 20px',
-                  background: '#2196F3',
+                  background: lastClockType !== 'clockIn' ? '#ccc' : '#2196F3',
                   color: 'white',
                   border: 'none',
                   borderRadius: '4px',
-                  cursor: 'pointer'
+                  cursor: lastClockType !== 'clockIn' ? 'not-allowed' : 'pointer'
                 }}
               >
                 下班打卡

@@ -64,6 +64,44 @@ router.post('/users', verifyAdmin, async (req, res) => {
   }
 });
 
+// 刪除用戶（基於用戶 ID）
+router.delete('/users/:id', verifyAdmin, async (req, res) => {
+  try {
+    const userId = req.params.id;
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: '用戶不存在' });
+    }
+
+    await User.findByIdAndDelete(userId);
+    res.json({ message: '用戶刪除成功' });
+  } catch (error) {
+    console.error('刪除用戶失敗:', error);
+    res.status(500).json({ message: '刪除用戶失敗' });
+  }
+});
+
+// 刪除用戶（基於用戶名）
+router.delete('/users/by-username', verifyAdmin, async (req, res) => {
+  try {
+    const { username } = req.body;
+    if (!username) {
+      return res.status(400).json({ message: '缺少用戶名' });
+    }
+
+    const user = await User.findOne({ username });
+    if (!user) {
+      return res.status(404).json({ message: '用戶不存在' });
+    }
+
+    await User.findOneAndDelete({ username });
+    res.json({ message: '用戶刪除成功' });
+  } catch (error) {
+    console.error('刪除用戶失敗:', error);
+    res.status(500).json({ message: '刪除用戶失敗' });
+  }
+});
+
 // 獲取考勤記錄 (已修改為 /records 並添加分頁支持)
 router.get('/records', verifyAdmin, async (req, res) => {
   try {

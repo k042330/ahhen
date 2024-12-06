@@ -109,7 +109,9 @@ function AdminPanel({ token }) {
         startDate: filters.startDate,
         endDate: filters.endDate,
         userId: filters.userId,
-        type: filters.type
+        type: filters.type,
+        page: currentPage,
+        limit: ITEMS_PER_PAGE
       }).toString();
 
       console.log('發送請求到:', `/api/admin/records?${queryParams}`); // 調試日誌
@@ -124,22 +126,27 @@ function AdminPanel({ token }) {
       console.log('回應狀態:', response.status); // 調試日誌
 
       if (response.ok) {
-        const text = await response.text();  // 先取得文字回應
-        console.log('回應內容:', text);      // 調試日誌
-        const data = JSON.parse(text);       // 解析 JSON
-        
-        // 分頁處理
-        const paginatedData = data.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
-        setRecords(Array.isArray(paginatedData) ? paginatedData : []);
-        setTotalPages(Math.ceil((data.length || 0) / ITEMS_PER_PAGE));
+        const data = await response.json();
+        console.log('回應數據:', data);  // 調試日誌
+
+        // 檢查並使用正確的數據結構
+        if (data && Array.isArray(data.records)) {
+          setRecords(data.records);
+          setTotalPages(data.totalPages || 1);
+        } else {
+          setRecords([]);
+          setTotalPages(1);
+        }
       } else {
         setError({ ...error, records: '獲取考勤記錄失敗' });
         setRecords([]);
+        setTotalPages(1);
       }
     } catch (error) {
       console.error('獲取考勤記錄失敗:', error);
       setError({ ...error, records: '獲取考勤記錄失敗' });
       setRecords([]);
+      setTotalPages(1);
     } finally {
       setLoading({ ...loading, records: false });
     }
@@ -168,6 +175,8 @@ function AdminPanel({ token }) {
   // 初始化獲取用戶列表和考勤記錄
   useEffect(() => {
     fetchUsers();
+    fetchAttendanceRecords(); // 初始時也獲取考勤記錄
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // 當篩選條件或當前頁數改變時，重新獲取考勤記錄

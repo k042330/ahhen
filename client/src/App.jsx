@@ -583,8 +583,9 @@ function App() {
           longitude: position.coords.longitude
         };
       } catch (err) {
-        alert('無法獲取位置，請確保已允許位置權限');
-        return;
+        console.warn('無法獲取位置，將不包含位置資訊進行打卡');
+        // 可選：通知用戶位置資訊未包含在打卡中
+        // alert('無法獲取位置，將不包含位置資訊進行打卡');
       }
 
       const response = await fetch('/api/attendance/clock', {
@@ -593,7 +594,7 @@ function App() {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
         },
-        body: JSON.stringify({ type, location }), // 包含位置資訊
+        body: JSON.stringify({ type, location }), // location 可以為 null
       });
       
       if (response.ok) {

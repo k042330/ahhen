@@ -1,7 +1,8 @@
-const router = require('express').Router();  // 使用單行引入 Router
+const router = require('express').Router();
 const User = require('../models/User');
+const AttendanceRecord = require('../models/AttendanceRecord');  // 添加 AttendanceRecord 引用
 const jwt = require('jsonwebtoken');
-const bcrypt = require('bcryptjs');  // 添加 bcryptjs 引用
+const bcrypt = require('bcryptjs');
 
 // 驗證管理員中間件
 const verifyAdmin = async (req, res, next) => {
@@ -61,6 +62,40 @@ router.post('/users', verifyAdmin, async (req, res) => {
   } catch (error) {
     console.error('創建用戶失敗:', error);
     res.status(500).json({ message: '創建用戶失敗' });
+  }
+});
+
+// 添加新的考勤記錄路由
+router.get('/attendance', verifyAdmin, async (req, res) => {
+  try {
+    const { startDate, endDate, userId, type } = req.query;
+    const query = {};
+    
+    if (startDate && endDate) {
+      query.timestamp = {
+        $gte: new Date(startDate),
+        $lte: new Date(`${endDate}T23:59:59`)
+      };
+    }
+    if (userId) query.userId = userId;
+    if (type) query.type = type;
+
+    const records = await AttendanceRecord.find(query)
+      .populate('userId', 'name')
+      .sort({ timestamp: -1 });
+
+    const formattedRecords = records.map(record => ({
+      _id: record._id,
+      userName: record.userId.name,
+      type: record.type,
+      timestamp: record.timestamp,
+      location: record.location
+    }));
+
+    res.json(formattedRecords);
+  } catch (error) {
+    console.error('獲取考勤記錄失敗:', error);
+    res.status(500).json({ message: '獲取考勤記錄失敗' });
   }
 });
 

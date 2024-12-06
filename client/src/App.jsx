@@ -4,6 +4,13 @@ import React, { useState, useEffect } from 'react';
 function AdminPanel({ token }) {
   const [newUser, setNewUser] = useState({ username: '', password: '', name: '' });
   const [userList, setUserList] = useState([]);
+  const [records, setRecords] = useState([]);
+  const [filters, setFilters] = useState({
+    startDate: new Date(new Date().setDate(1)).toISOString().split('T')[0], 
+    endDate: new Date().toISOString().split('T')[0],
+    userId: '',
+    type: ''
+  });
 
   // 創建新用戶
   const handleCreateUser = async (e) => {
@@ -23,10 +30,12 @@ function AdminPanel({ token }) {
         setNewUser({ username: '', password: '', name: '' });
         fetchUsers();
       } else {
-        alert('創建用戶失敗');
+        const data = await response.json();
+        alert(data.message || '創建用戶失敗');
       }
     } catch (error) {
       alert('創建用戶失敗');
+      console.error('創建用戶錯誤:', error);
     }
   };
 
@@ -41,83 +50,228 @@ function AdminPanel({ token }) {
       if (response.ok) {
         const data = await response.json();
         setUserList(data);
+      } else {
+        console.error('獲取用戶列表失敗:', response.statusText);
       }
     } catch (error) {
       console.error('獲取用戶列表失敗:', error);
     }
   };
 
+  // 獲取考勤記錄
+  const fetchAttendanceRecords = async () => {
+    try {
+      const queryParams = new URLSearchParams(filters);
+      const response = await fetch(`/api/admin/attendance?${queryParams}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setRecords(data);
+      } else {
+        console.error('獲取考勤記錄失敗:', response.statusText);
+      }
+    } catch (error) {
+      console.error('獲取考勤記錄失敗:', error);
+    }
+  };
+
+  // 初始化獲取用戶列表
   useEffect(() => {
     fetchUsers();
   }, []);
 
+  // 當篩選條件改變時，重新獲取考勤記錄
+  useEffect(() => {
+    fetchAttendanceRecords();
+  }, [filters]);
+
   return (
     <div style={{ marginTop: '20px', padding: '20px', background: '#f5f5f5', borderRadius: '8px' }}>
-      <h3>管理員面板</h3>
+      <h2 style={{ marginBottom: '20px' }}>管理員面板</h2>
       
-      {/* 創建新用戶表單 */}
-      <div style={{ marginBottom: '20px' }}>
-        <h4>創建新用戶</h4>
-        <form onSubmit={handleCreateUser} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-          <input
-            type="text"
-            placeholder="用戶名"
-            value={newUser.username}
-            onChange={(e) => setNewUser({...newUser, username: e.target.value})}
-            style={{ padding: '8px' }}
-          />
-          <input
-            type="password"
-            placeholder="密碼"
-            value={newUser.password}
-            onChange={(e) => setNewUser({...newUser, password: e.target.value})}
-            style={{ padding: '8px' }}
-          />
-          <input
-            type="text"
-            placeholder="姓名"
-            value={newUser.name}
-            onChange={(e) => setNewUser({...newUser, name: e.target.value})}
-            style={{ padding: '8px' }}
-          />
-          <button 
-            type="submit"
-            style={{
-              padding: '10px',
-              background: '#4CAF50',
-              color: 'white',
-              border: 'none',
-              borderRadius: '4px',
-              cursor: 'pointer'
-            }}
-          >
-            創建用戶
-          </button>
-        </form>
-      </div>
-
-      {/* 用戶列表 */}
-      <div>
-        <h4>用戶列表</h4>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-          {userList.map((user) => (
-            <div 
-              key={user.id}
+      {/* 用戶管理區塊 */}
+      <div style={{ 
+        background: 'white', 
+        padding: '20px', 
+        borderRadius: '8px', 
+        marginBottom: '20px' 
+      }}>
+        <h3>用戶管理</h3>
+        <div style={{ marginBottom: '20px' }}>
+          <h4>創建新用戶</h4>
+          <form onSubmit={handleCreateUser} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            <input
+              type="text"
+              placeholder="用戶名"
+              value={newUser.username}
+              onChange={(e) => setNewUser({...newUser, username: e.target.value})}
+              required
+              style={{ padding: '8px', border: '1px solid #ccc', borderRadius: '4px' }}
+            />
+            <input
+              type="password"
+              placeholder="密碼"
+              value={newUser.password}
+              onChange={(e) => setNewUser({...newUser, password: e.target.value})}
+              required
+              style={{ padding: '8px', border: '1px solid #ccc', borderRadius: '4px' }}
+            />
+            <input
+              type="text"
+              placeholder="姓名"
+              value={newUser.name}
+              onChange={(e) => setNewUser({...newUser, name: e.target.value})}
+              required
+              style={{ padding: '8px', border: '1px solid #ccc', borderRadius: '4px' }}
+            />
+            <button 
+              type="submit"
               style={{
                 padding: '10px',
-                background: 'white',
+                background: '#4CAF50',
+                color: 'white',
+                border: 'none',
                 borderRadius: '4px',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center'
+                cursor: 'pointer'
               }}
             >
-              <div>
-                <div>姓名: {user.name}</div>
-                <div>用戶名: {user.username}</div>
+              創建用戶
+            </button>
+          </form>
+        </div>
+
+        <div>
+          <h4>用戶列表</h4>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            {userList.map((user) => (
+              <div 
+                key={user.id || user._id}
+                style={{
+                  padding: '10px',
+                  background: '#f5f5f5',
+                  borderRadius: '4px',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center'
+                }}
+              >
+                <div>
+                  <div>姓名: {user.name}</div>
+                  <div>用戶名: {user.username}</div>
+                  <div>角色: {user.role === 'admin' ? '管理員' : '一般用戶'}</div>
+                </div>
+                {/* 如果需要，可以在這裡添加編輯或刪除用戶的按鈕 */}
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* 考勤記錄區塊 */}
+      <div style={{ background: 'white', padding: '20px', borderRadius: '8px' }}>
+        <h3>考勤記錄查詢</h3>
+        
+        {/* 篩選器 */}
+        <div style={{ marginBottom: '20px', display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            <label>開始日期:</label>
+            <input
+              type="date"
+              value={filters.startDate}
+              onChange={(e) => setFilters({...filters, startDate: e.target.value})}
+              style={{ padding: '8px', border: '1px solid #ccc', borderRadius: '4px' }}
+            />
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            <label>結束日期:</label>
+            <input
+              type="date"
+              value={filters.endDate}
+              onChange={(e) => setFilters({...filters, endDate: e.target.value})}
+              style={{ padding: '8px', border: '1px solid #ccc', borderRadius: '4px' }}
+            />
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            <label>員工:</label>
+            <select
+              value={filters.userId}
+              onChange={(e) => setFilters({...filters, userId: e.target.value})}
+              style={{ padding: '8px', border: '1px solid #ccc', borderRadius: '4px' }}
+            >
+              <option value="">所有員工</option>
+              {userList.map(user => (
+                <option key={user.id || user._id} value={user.id || user._id}>{user.name}</option>
+              ))}
+            </select>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            <label>打卡類型:</label>
+            <select
+              value={filters.type}
+              onChange={(e) => setFilters({...filters, type: e.target.value})}
+              style={{ padding: '8px', border: '1px solid #ccc', borderRadius: '4px' }}
+            >
+              <option value="">全部類型</option>
+              <option value="clockIn">上班打卡</option>
+              <option value="clockOut">下班打卡</option>
+            </select>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'flex-end' }}>
+            <button
+              onClick={fetchAttendanceRecords}
+              style={{
+                padding: '10px 20px',
+                background: '#2196F3',
+                color: 'white',
+                border: 'none',
+                borderRadius: '4px',
+                cursor: 'pointer',
+                height: '40px'
+              }}
+            >
+              查詢
+            </button>
+          </div>
+        </div>
+
+        {/* 考勤記錄表格 */}
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr style={{ background: '#f5f5f5' }}>
+                <th style={{ padding: '12px', textAlign: 'left', border: '1px solid #ddd' }}>員工姓名</th>
+                <th style={{ padding: '12px', textAlign: 'left', border: '1px solid #ddd' }}>打卡類型</th>
+                <th style={{ padding: '12px', textAlign: 'left', border: '1px solid #ddd' }}>打卡時間</th>
+                <th style={{ padding: '12px', textAlign: 'left', border: '1px solid #ddd' }}>位置</th>
+              </tr>
+            </thead>
+            <tbody>
+              {records.length > 0 ? (
+                records.map((record) => (
+                  <tr key={record._id} style={{ borderBottom: '1px solid #eee' }}>
+                    <td style={{ padding: '12px', border: '1px solid #ddd' }}>{record.userName}</td>
+                    <td style={{ padding: '12px', border: '1px solid #ddd' }}>
+                      {record.type === 'clockIn' ? '上班' : '下班'}
+                    </td>
+                    <td style={{ padding: '12px', border: '1px solid #ddd' }}>{new Date(record.timestamp).toLocaleString()}</td>
+                    <td style={{ padding: '12px', border: '1px solid #ddd' }}>
+                      {record.location ? 
+                        `${record.location.latitude}, ${record.location.longitude}` : 
+                        '-'
+                      }
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan="4" style={{ padding: '12px', textAlign: 'center', color: '#666' }}>
+                    暫無考勤記錄
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
         </div>
       </div>
     </div>
@@ -146,12 +300,13 @@ function App() {
       if (response.ok) {
         setUser(data.user);
         localStorage.setItem('token', data.token);
-        fetchRecords();
+        fetchRecords(data.token);
       } else {
         alert(data.message || '登入失敗');
       }
     } catch (error) {
       alert('登入失敗');
+      console.error('登入錯誤:', error);
     }
   };
 
@@ -170,18 +325,22 @@ function App() {
       
       if (response.ok) {
         alert(type === 'clockIn' ? '上班打卡成功' : '下班打卡成功');
-        fetchRecords();
+        fetchRecords(token);
+      } else {
+        const data = await response.json();
+        alert(data.message || '打卡失敗');
       }
     } catch (error) {
       alert('打卡失敗');
+      console.error('打卡錯誤:', error);
     }
   };
 
   // 獲取打卡記錄
-  const fetchRecords = async () => {
-    if (!user) return;
+  const fetchRecords = async (tokenParam = null) => {
+    if (!user && !tokenParam) return;
     try {
-      const token = localStorage.getItem('token');
+      const token = tokenParam || localStorage.getItem('token');
       const response = await fetch('/api/attendance/records', {
         headers: {
           'Authorization': `Bearer ${token}`
@@ -190,6 +349,8 @@ function App() {
       if (response.ok) {
         const data = await response.json();
         setRecords(data);
+      } else {
+        console.error('獲取記錄失敗:', response.statusText);
       }
     } catch (error) {
       console.error('獲取記錄失敗:', error);
@@ -215,6 +376,7 @@ function App() {
               placeholder="用戶名"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
+              required
               style={{ padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }}
             />
             <input
@@ -222,6 +384,7 @@ function App() {
               placeholder="密碼"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
+              required
               style={{ padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }}
             />
             <button 
@@ -259,6 +422,7 @@ function App() {
               </button>
             </div>
             
+            {/* 一般用戶的打卡功能 */}
             <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', marginBottom: '20px' }}>
               <button
                 onClick={() => handleClock('clockIn')}
@@ -288,6 +452,7 @@ function App() {
               </button>
             </div>
 
+            {/* 一般用戶的打卡記錄 */}
             <div>
               <h3 style={{ marginBottom: '10px' }}>打卡記錄</h3>
               {records.length > 0 ? (

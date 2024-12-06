@@ -99,6 +99,7 @@ function AdminPanel({ token }) {
     }
   };
 
+  // **修改後的獲取考勤記錄函數**
   // 獲取考勤記錄（管理員）
   const fetchAttendanceRecords = async () => {
     setLoading({ ...loading, records: true });
@@ -109,13 +110,14 @@ function AdminPanel({ token }) {
         page: currentPage,
         limit: ITEMS_PER_PAGE
       });
-      const response = await fetch(`/api/admin/records?${queryParams}`, {
+      // **修改 API 路徑從 /api/admin/records 改為 /api/admin/attendance**
+      const response = await fetch(`/api/admin/attendance?${queryParams}`, {  // 從 records 改為 attendance
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (response.ok) {
         const data = await response.json();
-        setRecords(data.records || []);
-        setTotalPages(Math.ceil((data.total || 0) / ITEMS_PER_PAGE));
+        setRecords(data || []); // 確保總是設置陣列
+        setTotalPages(Math.ceil((data.length || 0) / ITEMS_PER_PAGE)); // 使用 data.length 計算總頁數
       } else {
         setError({ ...error, records: '獲取考勤記錄失敗' });
         setRecords([]);

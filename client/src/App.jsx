@@ -106,22 +106,35 @@ function AdminPanel({ token }) {
     setError({ ...error, records: '' });
     try {
       const queryParams = new URLSearchParams({
-        ...filters,
-        page: currentPage,
-        limit: ITEMS_PER_PAGE
+        startDate: filters.startDate,
+        endDate: filters.endDate,
+        userId: filters.userId,
+        type: filters.type
+      }).toString();
+
+      console.log('發送請求到:', `/api/admin/records?${queryParams}`); // 調試日誌
+
+      const response = await fetch(`/api/admin/records?${queryParams}`, {  // 改為 records 而不是 attendance
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'  // 添加內容類型
+        }
       });
-      // **修改 API 路徑從 /api/admin/records 改為 /api/admin/attendance**
-      const response = await fetch(`/api/admin/attendance?${queryParams}`, {  // 從 records 改為 attendance
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
+
+      console.log('回應狀態:', response.status); // 調試日誌
+
       if (response.ok) {
-        const data = await response.json();
-        setRecords(data || []); // 確保總是設置陣列
-        setTotalPages(Math.ceil((data.length || 0) / ITEMS_PER_PAGE)); // 使用 data.length 計算總頁數
+        const text = await response.text();  // 先取得文字回應
+        console.log('回應內容:', text);      // 調試日誌
+        const data = JSON.parse(text);       // 解析 JSON
+        
+        // 分頁處理
+        const paginatedData = data.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
+        setRecords(Array.isArray(paginatedData) ? paginatedData : []);
+        setTotalPages(Math.ceil((data.length || 0) / ITEMS_PER_PAGE));
       } else {
         setError({ ...error, records: '獲取考勤記錄失敗' });
         setRecords([]);
-        console.error('獲取考勤記錄失敗:', response.statusText);
       }
     } catch (error) {
       console.error('獲取考勤記錄失敗:', error);
@@ -446,6 +459,30 @@ function App() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
+  // **新增的自動恢復登入狀態的 useEffect**
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      // 嘗試恢復用戶會話
+      fetch('/api/auth/verify', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.user) {
+          setUser(data.user);
+          fetchRecords(token);
+        }
+      })
+      .catch(() => {
+        localStorage.removeItem('token');
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // 登入處理
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -475,17 +512,32 @@ function App() {
     }
   };
 
-  // 打卡處理
+  // **修改後的打卡處理，添加位置獲取功能**
   const handleClock = async (type) => {
     try {
       const token = localStorage.getItem('token');
+      let location = null;
+
+      // 嘗試獲取地理位置
+      try {
+        const position = await new Promise((resolve, reject) => {
+          navigator.geolocation.getCurrentPosition(resolve, reject);
+        });
+        location = {
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude
+        };
+      } catch (error) {
+        console.warn('無法獲取位置:', error);
+      }
+
       const response = await fetch('/api/attendance/clock', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
         },
-        body: JSON.stringify({ type }),
+        body: JSON.stringify({ type, location }), // 包含位置資訊
       });
       
       if (response.ok) {

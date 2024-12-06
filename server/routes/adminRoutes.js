@@ -1,7 +1,7 @@
 // server/routes/adminRoutes.js
 const router = require('express').Router();
 const User = require('../models/User');
-const Record = require('../models/Record');  // 改為使用 Record 而不是 AttendanceRecord
+const Record = require('../models/Record');  // 使用 Record 模型
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 
@@ -124,6 +124,47 @@ router.delete('/records/deleteAll', verifyAdmin, async (req, res) => {
   } catch (error) {
     console.error('清空記錄失敗:', error);
     res.status(500).json({ message: '清空記錄失敗' });
+  }
+});
+
+// 新增：導出考勤記錄
+router.get('/records/export', verifyAdmin, async (req, res) => {
+  try {
+    const { startDate, endDate, userId, type } = req.query;
+    const query = {};
+    
+    // 添加日期範圍
+    if (startDate && endDate) {
+      query.timestamp = {
+        $gte: new Date(startDate),
+        $lte: new Date(`${endDate}T23:59:59`)
+      };
+    }
+
+    // 添加其他篩選條件
+    if (userId) query.userId = userId;
+    if (type) query.type = type;
+
+    // 獲取所有符合條件的記錄
+    const records = await Record.find(query)
+      .populate('userId', 'name')
+      .sort({ timestamp: -1 });
+
+    // 格式化數據
+    const formattedRecords = records.map(record => ({
+      userName: record.userId.name,
+      type: record.type,
+      timestamp: record.timestamp,
+      location: record.location
+    }));
+
+    // 設置響應頭以下載 JSON 文件
+    res.setHeader('Content-Disposition', 'attachment; filename=records_export.json');
+    res.setHeader('Content-Type', 'application/json');
+    res.json(formattedRecords);
+  } catch (error) {
+    console.error('導出記錄失敗:', error);
+    res.status(500).json({ message: '導出記錄失敗' });
   }
 });
 

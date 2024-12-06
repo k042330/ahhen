@@ -152,24 +152,58 @@ function AdminPanel({ token }) {
     }
   };
 
-  // 匯出考勤記錄為CSV
-  const exportToCSV = () => {
-    const headers = ['員工姓名', '打卡類型', '打卡時間', '位置'];
-    const csvContent = [
-      headers.join(','),
-      ...records.map(record => [
-        record.userName,
-        record.type === 'clockIn' ? '上班' : '下班',
-        new Date(record.timestamp).toLocaleString(),
-        record.location ? `${record.location.latitude},${record.location.longitude}` : '-'
-      ].join(','))
-    ].join('\n');
+  // **修改後的匯出考勤記錄為CSV函數**
+  const exportToCSV = async () => {
+    try {
+      setLoading({ ...loading, records: true });
 
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = `考勤記錄_${new Date().toISOString().slice(0,10)}.csv`;
-    link.click();
+      // 使用當前篩選條件獲取所有記錄
+      const queryParams = new URLSearchParams({
+        startDate: filters.startDate,
+        endDate: filters.endDate,
+        userId: filters.userId,
+        type: filters.type,
+        exportAll: 'true'  // 告訴後端要導出所有記錄
+      }).toString();
+
+      const response = await fetch(`/api/admin/records/export?${queryParams}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (response.ok) {
+        const allRecords = await response.json();
+        
+        // 生成 CSV 內容
+        const headers = ['員工姓名', '打卡類型', '打卡時間', '位置'];
+        const csvContent = [
+          headers.join(','),
+          ...allRecords.map(record => [
+            record.userName,
+            record.type === 'clockIn' ? '上班' : '下班',
+            new Date(record.timestamp).toLocaleString(),
+            record.location ? `${record.location.latitude},${record.location.longitude}` : '-'
+          ].join(','))
+        ].join('\n');
+
+        // 創建並下載文件
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = `考勤記錄_${filters.startDate}_${filters.endDate}.csv`;
+        link.click();
+
+        alert('導出成功！');
+      } else {
+        throw new Error('導出失敗');
+      }
+    } catch (error) {
+      console.error('導出失敗:', error);
+      alert('導出失敗，請稍後重試');
+    } finally {
+      setLoading({ ...loading, records: false });
+    }
   };
 
   // 初始化獲取用戶列表和考勤記錄
@@ -200,7 +234,7 @@ function AdminPanel({ token }) {
             cursor: 'pointer',
             fontSize: '14px'
           }}
-          disabled={records.length === 0}
+          disabled={loading.records || records.length === 0}
         >
           匯出考勤記錄
         </button>
@@ -598,6 +632,7 @@ function App() {
         <h1 style={{ textAlign: 'center', marginBottom: '20px' }}>打卡系統</h1>
         
         {!user ? (
+          // 登入表單保持不變
           <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
             <input
               type="text"
@@ -635,11 +670,35 @@ function App() {
               {loading ? '登入中...' : '登入'}
             </button>
           </form>
-        ) : (
-          <div>
+        ) : user.role === 'admin' ? (
+          // 管理員只顯示管理面板
+          <>
             <div style={{ marginBottom: '20px', textAlign: 'center' }}>
               <h2>歡迎, {user.name}</h2>
-              <p>角色: {user.role === 'admin' ? '管理員' : '一般用戶'}</p>
+              <p>角色: 管理員</p>
+              <button
+                onClick={handleLogout}
+                style={{
+                  padding: '5px 10px',
+                  background: '#f44336',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  marginTop: '10px'
+                }}
+              >
+                登出
+              </button>
+            </div>
+            <AdminPanel token={localStorage.getItem('token')} />
+          </>
+        ) : (
+          // 一般用戶顯示打卡功能和記錄
+          <>
+            <div style={{ marginBottom: '20px', textAlign: 'center' }}>
+              <h2>歡迎, {user.name}</h2>
+              <p>角色: 一般用戶</p>
               <button
                 onClick={handleLogout}
                 style={{
@@ -656,7 +715,7 @@ function App() {
               </button>
             </div>
             
-            {/* 一般用戶的打卡功能 */}
+            {/* 打卡按鈕 */}
             <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', marginBottom: '20px' }}>
               <button
                 onClick={() => handleClock('clockIn')}
@@ -713,12 +772,7 @@ function App() {
                 </p>
               )}
             </div>
-
-            {/* 管理員面板 */}
-            {user.role === 'admin' && (
-              <AdminPanel token={localStorage.getItem('token')} />
-            )}
-          </div>
+          </>
         )}
       </div>
     </div>

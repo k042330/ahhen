@@ -117,6 +117,30 @@ router.get('/verify', async (req, res) => {
   }
 });
 
+// 新增：刪除用戶的路由
+router.delete('/delete-user/:username', async (req, res) => {
+  try {
+    const { username } = req.params;
+    const { adminKey } = req.body;
+
+    // 驗證 adminKey 是否有效
+    if (adminKey !== process.env.ADMIN_CREATE_KEY) {
+      return res.status(403).json({ message: '無效的管理員密鑰' });
+    }
+
+    // 查找並刪除用戶
+    const user = await User.findOneAndDelete({ username });
+    if (!user) {
+      return res.status(404).json({ message: '用戶不存在' });
+    }
+
+    res.json({ message: `用戶 ${username} 已成功刪除` });
+  } catch (error) {
+    console.error('刪除用戶失敗:', error);
+    res.status(500).json({ message: '刪除用戶失敗' });
+  }
+});
+
 // 更新用戶角色的路由
 router.post('/update-role', async (req, res) => {
   try {

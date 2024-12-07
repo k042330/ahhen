@@ -187,6 +187,13 @@ function AdminPanel({ token }) {
 
   // 更新用戶班別
   const handleUpdateShift = async (userId, newShift) => {
+    // 添加用戶ID的錯誤檢查
+    if (!userId) {
+      console.error('用戶ID不存在');
+      alert('更新班別失敗：用戶ID不存在');
+      return;
+    }
+
     try {
       const response = await fetch(`/api/admin/users/${userId}`, {
         method: 'PATCH',
@@ -265,12 +272,12 @@ function AdminPanel({ token }) {
             </thead>
             <tbody>
               {userList.map(user => (
-                <tr key={user.id}>
+                <tr key={user._id}>  {/* 修改這裡 */}
                   <td style={{ border: '1px solid #ddd', padding: '8px' }}>{user.name}</td>
                   <td style={{ border: '1px solid #ddd', padding: '8px' }}>
                     <select
                       value={user.shift}
-                      onChange={(e) => handleUpdateShift(user.id, e.target.value)}
+                      onChange={(e) => handleUpdateShift(user._id, e.target.value)}  {/* 修改這裡 */}
                       style={{ padding: '4px' }}
                     >
                       {SHIFT_OPTIONS.map(option => (
@@ -321,7 +328,7 @@ function AdminPanel({ token }) {
             >
               <option value="">所有員工</option>
               {userList.map(user => (
-                <option key={user.id} value={user.id}>{user.name}</option>
+                <option key={user._id} value={user._id}>{user.name}</option>  {/* 修改 key 為 _id */}
               ))}
             </select>
           </div>

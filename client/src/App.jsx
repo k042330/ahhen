@@ -156,7 +156,9 @@ function AdminPanel({ token }) {
             `"${SHIFT_OPTIONS.find(opt => opt.value === record.userShift)?.label || '未指定'}"`,
             `"${record.type === 'clockIn' ? '上班' : '下班'}"`,
             `"${new Date(record.timestamp).toLocaleString()}"`,
-            record.location ? `"${record.location.latitude},${record.location.longitude}"` : `"-"`
+            record.location && record.location.latitude && record.location.longitude
+              ? `"${record.location.latitude.toFixed(6)},${record.location.longitude.toFixed(6)}"`
+              : `"-"`
           ].join(','))
         ].join('\n');
 
@@ -380,7 +382,9 @@ function AdminPanel({ token }) {
                       {new Date(record.timestamp).toLocaleString()}
                     </td>
                     <td style={{ border: '1px solid #ddd', padding: '8px' }}>
-                      {record.location ? `${record.location.latitude.toFixed(6)}, ${record.location.longitude.toFixed(6)}` : '-'}
+                      {record.location && record.location.latitude && record.location.longitude
+                        ? `${record.location.latitude.toFixed(6)}, ${record.location.longitude.toFixed(6)}`
+                        : '-'}
                     </td>
                   </tr>
                 ))}
@@ -712,7 +716,7 @@ function UserPanel({ user, lastClockType, handleLogout, token }) {
                   <span>{record.type === 'clockIn' ? '上班' : '下班'}</span>
                   <span>{new Date(record.timestamp).toLocaleString()}</span>
                 </div>
-                {record.location && (
+                {record.location && record.location.latitude && record.location.longitude && (
                   <div style={{ fontSize: '0.9em', color: '#666', marginTop: '4px' }}>
                     位置: {record.location.latitude.toFixed(6)}, {record.location.longitude.toFixed(6)}
                   </div>

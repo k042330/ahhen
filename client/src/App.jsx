@@ -2,15 +2,15 @@ import React, { useState, useEffect } from 'react';
 
 // 班別選項
 const SHIFT_OPTIONS = [
-  { value: 'morning', label: '早班 (06:00-14:00)' },
-  { value: 'middle', label: '中班 (14:00-22:00)' },
-  { value: 'night', label: '晚班 (22:00-06:00)' }
+  { value: 'morning', label: '早班 (08:00-16:00)' },
+  { value: 'middle', label: '中班 (16:00-01:00)' },
+  { value: 'night', label: '晚班 (00:00-09:00)' }
 ];
 
 // 班別時間配置 (簡化後)
 const SHIFT_CONFIG = {
   morning: {
-    label: '早班 (06:00-14:00)',
+    label: '早班 (08:00-16:00)',
     startTime: {
       hour: 6,
       minute: 0
@@ -18,7 +18,7 @@ const SHIFT_CONFIG = {
     allowEarlyMinutes: 60  // 可提前60分鐘打卡
   },
   middle: {
-    label: '中班 (14:00-22:00)',
+    label: '中班 (16:00-01:00)',
     startTime: {
       hour: 14,
       minute: 0
@@ -26,7 +26,7 @@ const SHIFT_CONFIG = {
     allowEarlyMinutes: 60
   },
   night: {
-    label: '晚班 (22:00-06:00)',
+    label: '晚班 (00:00-09:00)',
     startTime: {
       hour: 22,
       minute: 0
@@ -272,12 +272,12 @@ function AdminPanel({ token }) {
             </thead>
             <tbody>
               {userList.map(user => (
-                <tr key={user._id}>  {/* 修改這裡 */}
+                <tr key={user._id}>
                   <td style={{ border: '1px solid #ddd', padding: '8px' }}>{user.name}</td>
                   <td style={{ border: '1px solid #ddd', padding: '8px' }}>
                     <select
                       value={user.shift}
-                      onChange={(e) => handleUpdateShift(user._id, e.target.value)}  {/* 修改這裡 */}
+                      onChange={(e) => handleUpdateShift(user._id, e.target.value)}
                       style={{ padding: '4px' }}
                     >
                       {SHIFT_OPTIONS.map(option => (
@@ -328,7 +328,7 @@ function AdminPanel({ token }) {
             >
               <option value="">所有員工</option>
               {userList.map(user => (
-                <option key={user._id} value={user._id}>{user.name}</option>  {/* 修改 key 為 _id */}
+                <option key={user._id} value={user._id}>{user.name}</option>
               ))}
             </select>
           </div>

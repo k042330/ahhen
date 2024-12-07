@@ -19,6 +19,11 @@ const userSchema = new mongoose.Schema({
     enum: ['admin', 'employee'],
     required: true,
     default: 'employee'
+  },
+  shift: {
+    type: String,
+    enum: ['morning', 'middle', 'night'],
+    default: 'morning'
   }
 }, { 
   timestamps: true 

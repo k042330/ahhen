@@ -6,9 +6,17 @@ const attendanceRecordSchema = new mongoose.Schema({
     ref: 'User',
     required: true
   },
+  userName: {
+    type: String,
+    required: true
+  },
+  userShift: {
+    type: String,
+    required: true
+  },
   type: {
     type: String,
-    enum: ['clockIn', 'clockOut'],
+    enum: ['clockIn', 'clockOut', 'autoClockOut'], // 添加自動打卡類型
     required: true
   },
   timestamp: {
@@ -18,6 +26,13 @@ const attendanceRecordSchema = new mongoose.Schema({
   location: {
     latitude: Number,
     longitude: Number
+  },
+  lateMinutes: { // 新增遲到時間
+    type: Number,
+    default: 0
+  },
+  note: { // 新增備註欄位
+    type: String
   }
 }, {
   timestamps: true

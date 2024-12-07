@@ -7,7 +7,7 @@ const User = require('../models/User');
 // 註冊路由
 router.post('/register', async (req, res) => {
   try {
-    const { username, password, name, role, adminKey } = req.body;
+    const { username, password, name, role, adminKey, shift } = req.body;
     
     // 如果要創建管理員，檢查 adminKey
     if (role === 'admin') {
@@ -30,7 +30,8 @@ router.post('/register', async (req, res) => {
       username,
       password: hashedPassword,
       name,
-      role: role || 'employee' // 預設為一般用戶
+      role: role || 'employee', // 預設為一般用戶
+      shift // 添加班別信息
     });
 
     await user.save();
@@ -48,7 +49,7 @@ router.post('/login', async (req, res) => {
     
     // 明確選擇所有需要的字段
     const user = await User.findOne({ username })
-      .select('username password name role');
+      .select('username password name role shift'); // 包含班別信息
       
     if (!user) {
       return res.status(400).json({ message: '用戶不存在' });
@@ -69,17 +70,19 @@ router.post('/login', async (req, res) => {
       id: user._id,
       username: user.username,
       name: user.name,
-      role: user.role
+      role: user.role,
+      shift: user.shift // 添加班別信息
     });
 
     res.json({
+      token,
       user: {
         id: user._id,
         username: user.username,
         name: user.name,
-        role: user.role
-      },
-      token
+        role: user.role,
+        shift: user.shift // 返回班別信息
+      }
     });
   } catch (error) {
     console.error('登入失敗:', error);
@@ -108,7 +111,8 @@ router.get('/verify', async (req, res) => {
         id: user._id,
         username: user.username,
         name: user.name,
-        role: user.role
+        role: user.role,
+        shift: user.shift // 返回班別信息
       }
     });
   } catch (error) {
